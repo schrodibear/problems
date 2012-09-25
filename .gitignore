@@ -1,0 +1,8 @@
+# Everything except ocaml sources
+*.cmi
+*.cmo
+*.txt
+solution
+*.cpp
+\#*\#
+.*
