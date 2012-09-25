@@ -2,6 +2,9 @@
 *.cmi
 *.cmo
 *.txt
+*.cmt
+*.cmx
+*.o
 solution
 *.cpp
 \#*\#
