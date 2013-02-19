@@ -9,3 +9,9 @@ solution
 *.cpp
 \#*\#
 .*
+**/_build
+*.d.byte
+*.byte
+*.native
+*.opt
+_tags
