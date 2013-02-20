@@ -33,7 +33,6 @@ module Printing : sig
     method private point : int -> int -> char -> unit
   end
   and virtual stamp : char -> int -> int -> int -> object
-
     method setc : char -> unit
     method virtual get_dimensions : dimensions
     method addn : int -> unit
