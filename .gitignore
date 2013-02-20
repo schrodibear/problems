@@ -15,3 +15,7 @@ solution
 *.native
 *.opt
 _tags
+
+# Tests and correct answers
+*.dat
+*.ans
