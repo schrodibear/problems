@@ -159,81 +159,55 @@ end
 let () =
   let open List in
   let open Printing in
-    let read_list () = read_line () |> Str.split (Str.regexp_string " ") in
+    let nline = ref 1 in
+    let read_list () =
+      read_line () |> (incr nline; Str.split (Str.regexp_string " "))
+    in
     let (~%) = int_of_string in
-    match read_list () with
-      | [max_c; max_o] ->
-        let canvases = Array.make (~%max_c + 1) None in
-        let objects = Array.make (~%max_o + 1) None in
-        (match read_list () with
-          | [id; w; h] ->
-            let root_id = ~%id in
-            let root_canvas = new canvas ~%w ~%h in 
-            canvases.(root_id) <-
-              Some (root_canvas :> proto_canvas);
-            let curr_canvas = ref root_id in
-            (try
-              let nline = ref 3 in
-              while true do
-                (try
-                  (match read_list () with
-                    | [ "new"; id; "subcanvas"; parent; w; h ;x; y ] ->
-                      let id =  ~%id in
-                      (match canvases.(id) with
-                        | None ->
-                          let parent =
-                            if parent <> "-1" then ~%parent else !curr_canvas
-                          in
-                          (match canvases.(parent) with
-                            | Some pc ->
-                              canvases.(id) <-
-                                Some (new subcanvas pc ~%w ~%h ~%x ~%y :> proto_canvas)
-                            | None -> ())
-                        | Some _ -> ())
-                    | [ "new"; id; name; c; n; x; y ] ->
-                      let id = ~%id in
-                      (match objects.(id) with
-                        | None ->
-                          objects.(id) <-
-                            Some (flip_assoc name_constructor name c.[0] ~%n ~%x ~%y)
-                        | Some _ -> ())
-                    | [ "switch"; id ] ->
-                      let id = ~%id in
-                      (match canvases.(id) with
-                        | Some _ -> curr_canvas := id
-                        | None -> ())
-                    | command :: id :: tail ->
-                      let id = ~% id in
-                      (match objects.(id) with
-                        | Some obj ->
-                          (match canvases.(!curr_canvas) with
-                            | Some pc ->
-                                (match command with
-                                  | "draw" -> obj#draw pc
-                                  | "match" ->
-                                    (match objects.(~% (hd tail)) with
-                                      | Some o -> obj#_match o
-                                      | None -> ())
-                                  | "move" ->
-                                    obj#move ~%(hd tail) ~%(nth tail 1)
-                                  | "setc" ->
-                                    obj#setc (hd tail).[0]
-                                  | "addn" ->
-                                    obj#addn ~%(hd tail)
-                                  | _ -> failwith ("wrong input in line" ^
-                                    (string_of_int !nline)))
-                            | None -> failwith ("It happened in line #" ^
-                                        (string_of_int !nline)))
-                        | None -> ())
-                    | _ -> failwith ("wrong input in line #" ^
-                             (string_of_int !nline)));
-                with
-                  | Invalid_argument "index out of bounds" -> ()
-                  | Failure "hd" | Failure "nth" ->
-                    failwith ("wrong input in line #" ^ (string_of_int !nline)));
-                incr nline
-              done
-            with End_of_file -> ());
-            print_string root_canvas#contents
-          | _ -> failwith "wrong input line #2")
-      | _ -> failwith "wrong input line #1"
+    let set_if_none arr i b = match arr.(i) with
+      | None -> arr.(i) <- Some b
+      | Some _ -> raise (Invalid_argument "?<-")
+    in
+    let extract = function
+      | Some a -> a
+      | None -> raise (Invalid_argument "extract")
+    in
+    let fail () = failwith ("wrong input in line #" ^ (string_of_int !nline)) in
+    try
+      let elems = read_list () in
+      let canvases = Array.make (~%(hd elems) + 1) None in
+      let objects = Array.make (~%(nth elems 1) + 1) None in
+      let elems = read_list () in
+      let root_canvas = new canvas ~%(nth elems 1) ~%(nth elems 2) in
+      canvases.(~%(hd elems)) <- Some (root_canvas :> proto_canvas);
+      let curr_canvas = ref (~%(hd elems)) in
+      try while true do
+        (try
+           (match read_list () with
+             | [ "new"; id; "subcanvas"; parent; w; h ;x; y ] ->
+               set_if_none canvases ~%id (new subcanvas
+                 (extract canvases.(if parent <> "-1" then ~%parent else !curr_canvas))
+                 ~%w ~%h ~%x ~%y :> proto_canvas)
+             | [ "new"; id; name; c; n; x; y ] ->
+               set_if_none objects ~%id (flip_assoc name_constructor name c.[0] ~%n ~%x ~%y)
+             | [ "switch"; id ] ->
+               if canvases.(~%id) <> None then
+                 curr_canvas := ~%id
+             | command :: id :: tail ->
+               let obj = extract objects.(~%id) in
+               (match command with
+                 | "draw" -> obj#draw (extract canvases.(!curr_canvas))
+                 | "match" -> obj#_match **> extract objects.(~% (hd tail))
+                 | "move" -> obj#move ~%(hd tail) ~%(nth tail 1)
+                 | "setc" -> obj#setc (hd tail).[0]
+                 | "addn" -> obj#addn ~%(hd tail)
+                 | _ -> fail ())
+             | _ -> fail ());
+         with
+           | Invalid_argument "index out of bounds"
+           | Invalid_argument "?<-"
+           | Invalid_argument "extract" -> ());
+        incr nline
+        done with End_of_file -> print_string root_canvas#contents
+    with
+      |_ -> fail ()
