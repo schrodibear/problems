@@ -158,6 +158,7 @@ end
 
 let () =
   let open List in
+  let open Option in
   let open Printing in
     let nline = ref 1 in
     let read_list () =
@@ -167,10 +168,6 @@ let () =
     let set_if_none arr i b = match arr.(i) with
       | None -> arr.(i) <- Some b
       | Some _ -> raise (Invalid_argument "?<-")
-    in
-    let extract = function
-      | Some a -> a
-      | None -> raise (Invalid_argument "extract")
     in
     let fail () = failwith ("wrong input in line #" ^ (string_of_int !nline)) in
     try
@@ -186,7 +183,7 @@ let () =
            (match read_list () with
              | [ "new"; id; "subcanvas"; parent; w; h ;x; y ] ->
                set_if_none canvases ~%id (new subcanvas
-                 (extract canvases.(if parent <> "-1" then ~%parent else !curr_canvas))
+                 (get canvases.(if parent <> "-1" then ~%parent else !curr_canvas))
                  ~%w ~%h ~%x ~%y :> proto_canvas)
              | [ "new"; id; name; c; n; x; y ] ->
                set_if_none objects ~%id (flip_assoc name_constructor name c.[0] ~%n ~%x ~%y)
@@ -194,10 +191,10 @@ let () =
                if canvases.(~%id) <> None then
                  curr_canvas := ~%id
              | command :: id :: tail ->
-               let obj = extract objects.(~%id) in
+               let obj = get objects.(~%id) in
                (match command with
-                 | "draw" -> obj#draw (extract canvases.(!curr_canvas))
-                 | "match" -> obj#_match **> extract objects.(~% (hd tail))
+                 | "draw" -> obj#draw (get canvases.(!curr_canvas))
+                 | "match" -> obj#_match **> get objects.(~% (hd tail))
                  | "move" -> obj#move ~%(hd tail) ~%(nth tail 1)
                  | "setc" -> obj#setc (hd tail).[0]
                  | "addn" -> obj#addn ~%(hd tail)
@@ -206,7 +203,7 @@ let () =
          with
            | Invalid_argument "index out of bounds"
            | Invalid_argument "?<-"
-           | Invalid_argument "extract" -> ());
+           | No_value -> ());
         incr nline
         done with End_of_file -> print_string root_canvas#contents
     with
