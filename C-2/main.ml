@@ -64,7 +64,7 @@ end = struct
 
   class virtual canvas w h = object (self)
     method private check_dimensions d =
-      d.x >=0 && d.y >= 0 && d.x + d.w < w && d.y + d.h < h
+      d.x >=0 && d.y >= 0 && d.x + d.w <= w && d.y + d.h <= h
     method private virtual point : int -> int -> char -> unit
     method draw (obj : stamp) =
       if self#check_dimensions obj#get_dimensions then
