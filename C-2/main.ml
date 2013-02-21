@@ -235,17 +235,16 @@ let () =
                if canvases.(~%id) <> None then
                  curr_canvas := ~%id
              | command :: id :: tail ->
-               let obj = get objects.(~%id) in
-               (match command with
-                 | "draw" -> (get canvases.(!curr_canvas))#draw (obj :> stamp)
-                 | "match" -> obj#_match **> (get objects.(~% (hd tail)) :> stamp)
-                 | "move" -> obj#move ~%(hd tail) ~%(nth tail 1)
-                 | "setc" -> obj#setc (hd tail).[0]
-                 | "addn" -> obj#addn ~%(hd tail)
+               let obj () = get objects.(~%id) in
+               (match command :: tail with
+                 | [ "draw" ] -> (get canvases.(!curr_canvas))#draw (obj () :> stamp)
+                 | [ "match"; id ] -> (obj ())#_match **> (get objects.(~%id) :> stamp)
+                 | [ "move"; dx; dy ] -> (obj ())#move ~%dx ~%dy
+                 | [ "setc"; c ] -> (obj ())#setc c.[0]
+                 | [ "addn"; dn ] -> (obj ())#addn ~%dn
                  | _ -> fail ())
              | _ -> fail ());
          with
-           | Invalid_argument "index out of bounds"
            | Invalid_argument "subcanvas"
            | Invalid_argument "set_if_none"
            | Not_found -> ())
