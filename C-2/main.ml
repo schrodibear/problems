@@ -131,41 +131,41 @@ end = struct
 
   let name_constructor =
     [ "square", (fun c n x y ->
-                 (object (self)
-                   inherit stamp c n x y
-                   method check_n n' =
-                     2 <= n'
-                   method get_dimensions =
-                     { x; y; w = n; h = n / 2 }
-                   method draw point =
-                     self#line point n x y 1 0;
-                     self#line point (n / 2) x y 0 1;
-                     self#line point n x (y + n / 2 - 1) 1 0;
-                     self#line point (n / 2) (x + n - 1) y 0 1
-                 end :> stamp));
+                  (object (self)
+                    inherit stamp c n x y
+                    method check_n n' =
+                      2 <= n'
+                    method get_dimensions =
+                      { x; y; w = n; h = n / 2 }
+                    method draw point =
+                      self#line point n x y 1 0;
+                      self#line point (n / 2) x y 0 1;
+                      self#line point n x (y + n / 2 - 1) 1 0;
+                      self#line point (n / 2) (x + n - 1) y 0 1
+                   end :> stamp));
       "tile", (fun c n x y ->
-               (object (self)
-                 inherit stamp c n x y
-                 method check_n n' =
-                   2 <= n'
-                 method get_dimensions =
-                   { x; y; w = n; h = n / 2 }
-                 method draw point =
-                   self#rect point n (n / 2) x y
-                end :> stamp));
-    "chess\\", (fun c n x y ->
                 (object (self)
                   inherit stamp c n x y
                   method check_n n' =
-                    1 <= n'
+                    2 <= n'
                   method get_dimensions =
-                    { x; y; w = 2 * n; h = 2 * ((n + 1) / 2) }
+                    { x; y; w = n; h = n / 2 }
                   method draw point =
-                    self#rect point n ((n + 1) / 2) x y;
-                    self#rect point n ((n + 1) / 2) (x + n) (y + (n + 1) / 2)
+                    self#rect point n (n / 2) x y
                  end :> stamp));
+    "chess\\", (fun c n x y ->
+                 (object (self)
+                   inherit stamp c n x y
+                   method check_n n' =
+                     1 <= n'
+                   method get_dimensions =
+                     { x; y; w = 2 * n; h = 2 * ((n + 1) / 2) }
+                   method draw point =
+                     self#rect point n ((n + 1) / 2) x y;
+                     self#rect point n ((n + 1) / 2) (x + n) (y + (n + 1) / 2)
+                  end :> stamp));
     "chess/", (fun c n x y ->
-               (object (self)
+                (object (self)
                   inherit stamp c n x y
                   method check_n n' =
                     1 <= n'
@@ -174,30 +174,30 @@ end = struct
                   method draw point =
                     self#rect point n ((n + 1) / 2) (x + n) y;
                     self#rect point n ((n + 1) / 2) x (y + (n + 1) / 2)
+                 end :> stamp));
+    "xcross", (fun c n x y ->
+                (object (self)
+                  inherit stamp c n x y
+                  method check_n n' =
+                    0 <= n'
+                  method get_dimensions =
+                    { x; y; w = 2 * n + 1; h = 2 * n + 1 }
+                  method draw point =
+                    self#line point (2 * n + 1) x y 1 1;
+                    self#line point (2 * n + 1) x (y + 2 * n) 1 (-1)
                 end :> stamp));
-    "x", (fun c n x y ->
-          (object (self)
-            inherit stamp c n x y
-            method check_n n' =
-              0 <= n'
-            method get_dimensions =
-              { x; y; w = 2 * n + 1; h = 2 * n + 1 }
-            method draw point =
-              self#line point (2 * n + 1) x y 1 1;
-              self#line point (2 * n + 1) x (y + 2 * n) 1 (-1)
-           end :> stamp));
-    "+", (fun c n x y ->
-          (object (self)
-            inherit stamp c n x y
-            method check_n n' =
-              0 <= n'
-            method get_dimensions =
-              { x; y; w = 4 * n + 1; h = 2 * n + 1 }
-            method draw point =
-              self#line point (4 * n + 1) x (y + n) 1 0;
-              self#line point (2 * n + 1) (x + 2 * n) y 0 1
-          end :> stamp))
- ]
+    "+cross", (fun c n x y ->
+                (object (self)
+                  inherit stamp c n x y
+                  method check_n n' =
+                    0 <= n'
+                  method get_dimensions =
+                    { x; y; w = 4 * n + 1; h = 2 * n + 1 }
+                  method draw point =
+                    self#line point (4 * n + 1) x (y + n) 1 0;
+                    self#line point (2 * n + 1) (x + 2 * n) y 0 1
+                end :> stamp))
+    ]
 end
 
 let () =
@@ -251,4 +251,4 @@ let () =
            | Not_found -> ())
         done with End_of_file -> print_string root_canvas#contents
     with
-      |_ -> fail ()
+      | _ -> fail ()
