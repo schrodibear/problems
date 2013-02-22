@@ -200,7 +200,7 @@ end = struct
     ]
 end
 
-let () =
+let run () =
   let open List in
   let open Option in
   let open Printing in
@@ -251,3 +251,72 @@ let () =
         done with End_of_file -> print_string root_canvas#contents
     with
       | _ -> fail ()
+
+let generate seed () =
+  let open Printf in
+  Random.init seed;
+  let random a b = a + Random.int (b - a + 1) in
+  let maxc = random 0 100 in
+  let maxo = random 0 100 in
+  let root = random 0 maxc in
+  let w = random 10 160 in
+  let h = random 10 1000 in
+  printf "%d %d\n" maxc maxo;
+  printf "%d %d %d\n" root w h;
+  let canvases = Array.make (maxc + 1) false in
+  let objects = Array.make (maxo + 1) false in
+  let current = ref root in
+  canvases.(!current) <- true;
+  let clist = ['~'; '!'; '@'; '#'; '$'; '%'; '^'; '&'; '*'; '('; ')'; '_'; '+' ] in
+  let for_random_object f =
+    let id = random 0 maxo in
+    if objects.(id) then f id
+  in
+  for i = 10 to random 10 1000 do
+    match random 1 8 with
+      | 1 ->
+        let id, pid = random 0 maxc, random 0 maxc in
+        if canvases.(if pid = -1 then !current else pid) && not canvases.(id) then (
+          canvases.(id) <- true;
+          let w, h, x, y = random 1 w, random 1 h, random 0 (w - 1), random 0 (h- 1) in
+          printf "new %d subcanvas %d %d %d %d %d\n" id pid w h x y)
+      | 2 ->
+        let id = random 0 maxo in
+        if not objects.(id) then (
+          objects.(id) <- true;
+          let name = List.nth ["square"; "tile"; "chess/"; "chess\\"; "xcross"; "+cross"] (random 0 5) in
+          let c = List.nth clist (random 0 (List.length clist -1)) in
+          let n = random 2 (min ((w - 1) / 4) ((h - 1) / 4)) in
+          let x, y = random 0 (w - 1), random 0 (h - 1) in
+          printf "new %d %s %c %d %d %d\n" id name c n x y)
+      | 3 ->
+        let id = random 0 maxc in
+        if canvases.(id) then
+          printf "switch %d\n" id
+      | 4 -> for_random_object (fun id -> printf "draw %d\n" id)
+      | 5 ->
+         let id, oid = random 0 maxo, random 0 maxo in
+         if objects.(id) && objects.(oid) then
+           printf "match %d %d\n" id oid
+      | 6 ->
+        for_random_object (fun id ->
+          let dx, dy = random (-w) w, random (-h) h in
+          printf "move %d %d %d\n" id dx dy)
+      | 7 ->
+        for_random_object (fun id ->
+          let c = List.nth clist (random 0 (List.length clist -1)) in
+          printf "setc %d %c\n" id c)
+      | 8 ->
+        for_random_object (fun id ->
+          let dn = random (-((h - 1) / 4)) ((h - 1) / 4) in
+          printf "addn %d %d\n" id dn)
+      | _ -> failwith "Impossible"
+  done
+
+let () =
+  let f = ref run in
+  Arg.parse
+    [ ("-g", Arg.Int (fun seed -> f := generate seed), "Generate test case with the seed specified") ]
+    (fun _ -> ())
+    "Solution for problem C-2.";
+  !f ()
