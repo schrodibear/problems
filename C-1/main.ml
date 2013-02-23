@@ -9,6 +9,8 @@ end
 module List = struct
   include List
   let flip_assoc l a = assoc a l
+  let flip_iter f a = iter a f
+  let flip_iteri f a = iteri a f
   let rec roll_by n ?(result=[]) = function
     | [] -> rev result
     | lst -> roll_by n ~result:(take n lst :: result) (drop n lst)
@@ -186,7 +188,7 @@ end = struct
     ]
 end
 
-let () =
+let run () =
   let open List in
   let open Option in
   let open Printing in
@@ -212,8 +214,8 @@ let () =
         | id :: command :: tail ->
           let obj = get objects.(~%id - 1) in
           (match command :: tail with
-            | [ "draw" ] -> root_canvas#draw (obj :> _ stamp)
-            | [ "match"; id ] -> obj#_match **> (get objects.(~%id - 1) :> _ stamp)
+            | [ "draw" ] -> root_canvas#draw obj
+            | [ "match"; id ] -> obj#_match **> (get objects.(~%id - 1))
             | [ "move"; dx; dy ] -> obj#move ~%dx ~%dy
             | [ "setc"; c ] -> obj#setc c.[0]
             | [ "addn"; dn ] -> obj#addn ~%dn
@@ -222,68 +224,43 @@ let () =
               | _ -> fail ())
             | _ -> fail ())
         | _ -> fail ();
-      done with End_of_file -> print_string root_canvas#contents
+    done with End_of_file -> print_string root_canvas#contents
   with
     | _ -> fail ()
 
-(*let generate seed () =
+let generate seed () =
   let open Printf in
+  let open List in
   Random.init seed;
   let random a b = a + Random.int (b - a + 1) in
-  let maxc = random 0 100 in
-  let maxo = random 0 100 in
-  let root = random 0 maxc in
   let w = random 10 160 in
   let h = random 10 1000 in
-  printf "%d %d\n" maxc maxo;
-  printf "%d %d %d\n" root w h;
-  let canvases = Array.make (maxc + 1) false in
-  let objects = Array.make (maxo + 1) false in
-  let current = ref root in
-  canvases.(!current) <- true;
+  printf "%d %d\n" w h;
+  let nobjects = random 1 250 in
+  let rotatable = init nobjects (fun _ -> Random.bool ()) in
   let clist = ['~'; '!'; '@'; '#'; '$'; '%'; '^'; '&'; '*'; '('; ')'; '_'; '+' ] in
-  let for_random_object f =
-    let id = random 0 maxo in
-    if objects.(id) then f id
+  let random_elem lst = nth lst (random 0 (length lst)) in
+  let random_c () = random_elem clist in
+  let random_pos () = random 2 100 in
+  let random_int () = random (-100) 100 in
+  let print_random_stamp i name_lst =
+    printf "%s%s %c %d %d %d" (if i = 0 then "" else " ")
+            (random_elem name_lst) (random_c ()) (random_pos ())
+            (random_int ()) (random_int ())
   in
+  flip_iteri rotatable (fun i -> function
+    | true -> print_random_stamp i [ "square"; "tile" ]
+    | false -> print_random_stamp i ["chess/"; "chess\\"; "xcross"; "+cross" ]);
+  let random_obj () = random 1 nobjects in
   for i = 10 to random 10 1000 do
-    match random 1 8 with
-      | 1 ->
-        let id, pid = random 0 maxc, random 0 maxc in
-        if canvases.(if pid = -1 then !current else pid) && not canvases.(id) then (
-          canvases.(id) <- true;
-          let w, h, x, y = random 1 w, random 1 h, random 0 (w - 1), random 0 (h- 1) in
-          printf "new %d subcanvas %d %d %d %d %d\n" id pid w h x y)
-      | 2 ->
-        let id = random 0 maxo in
-        if not objects.(id) then (
-          objects.(id) <- true;
-          let name = List.nth ["square"; "tile"; "chess/"; "chess\\"; "xcross"; "+cross"] (random 0 5) in
-          let c = List.nth clist (random 0 (List.length clist -1)) in
-          let n = random 2 (min ((w - 1) / 4) ((h - 1) / 4)) in
-          let x, y = random 0 (w - 1), random 0 (h - 1) in
-          printf "new %d %s %c %d %d %d\n" id name c n x y)
-      | 3 ->
-        let id = random 0 maxc in
-        if canvases.(id) then
-          printf "switch %d\n" id
-      | 4 -> for_random_object (fun id -> printf "draw %d\n" id)
-      | 5 ->
-         let id, oid = random 0 maxo, random 0 maxo in
-         if objects.(id) && objects.(oid) then
-           printf "match %d %d\n" id oid
-      | 6 ->
-        for_random_object (fun id ->
-          let dx, dy = random (-w) w, random (-h) h in
-          printf "move %d %d %d\n" id dx dy)
-      | 7 ->
-        for_random_object (fun id ->
-          let c = List.nth clist (random 0 (List.length clist -1)) in
-          printf "setc %d %c\n" id c)
-      | 8 ->
-        for_random_object (fun id ->
-          let dn = random (-((h - 1) / 4)) ((h - 1) / 4) in
-          printf "addn %d %d\n" id dn)
+    let id = random_obj () in
+    match random 1 6 with
+      | 1 -> printf "%d draw" id
+      | 2 -> printf "%d match %d\n" id (random_obj ())
+      | 3 -> printf "%d move %d %d\n" id (random_int ()) (random_int ())
+      | 4 -> printf "%d setc %c\n" id (random_c ())
+      | 5 -> printf "%d addn %d\n" id (random_pos ())
+      | 6 -> if nth rotatable id then printf "%d rotate" id
       | _ -> failwith "impossible"
   done
 
@@ -292,6 +269,5 @@ let () =
   Arg.parse
     [ ("-g", Arg.Int (fun seed -> f := generate seed), "Generate test case with the seed specified") ]
     (fun _ -> ())
-    "Solution for problem C-2.";
+    "Solution for problem C-1.";
   !f ()
-*)
