@@ -234,14 +234,14 @@ let generate seed () =
   Random.init seed;
   let random a b = a + Random.int (b - a + 1) in
   let w = random 10 160 in
-  let h = random 10 1000 in
+  let h = random 10 600 in
   printf "%d %d\n" w h;
   let nobjects = random 1 250 in
   let rotatable = init nobjects (fun _ -> Random.bool ()) in
   let clist = ['~'; '!'; '@'; '#'; '$'; '%'; '^'; '&'; '*'; '('; ')'; '_'; '+' ] in
-  let random_elem lst = nth lst (random 0 (length lst)) in
+  let random_elem lst = nth lst (random 0 (length lst - 1)) in
   let random_c () = random_elem clist in
-  let random_pos () = random 2 100 in
+  let random_pos () = random 2 10 in
   let random_int () = random (-100) 100 in
   let print_random_stamp i name_lst =
     printf "%s%s %c %d %d %d" (if i = 0 then "" else " ")
@@ -251,16 +251,17 @@ let generate seed () =
   flip_iteri rotatable (fun i -> function
     | true -> print_random_stamp i [ "square"; "tile" ]
     | false -> print_random_stamp i ["chess/"; "chess\\"; "xcross"; "+cross" ]);
-  let random_obj () = random 1 nobjects in
+  let random_obj () = random 1 (min [10; nobjects]) in
+  print_endline "";
   for i = 10 to random 10 1000 do
     let id = random_obj () in
     match random 1 6 with
-      | 1 -> printf "%d draw" id
+      | 1 -> printf "%d draw\n" id
       | 2 -> printf "%d match %d\n" id (random_obj ())
       | 3 -> printf "%d move %d %d\n" id (random_int ()) (random_int ())
       | 4 -> printf "%d setc %c\n" id (random_c ())
       | 5 -> printf "%d addn %d\n" id (random_pos ())
-      | 6 -> if nth rotatable id then printf "%d rotate" id
+      | 6 -> if nth rotatable (id - 1) then printf "%d rotate\n" id
       | _ -> failwith "impossible"
   done
 
