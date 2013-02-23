@@ -170,7 +170,7 @@ end = struct
     ]
 end
 
-let (*run*) () =
+let run () =
   let open List in
   let open Printing in
   let nline = ref 0 in
@@ -203,41 +203,43 @@ let (*run*) () =
   with
     | _ -> fail ()
 
-(*let generate seed () =
+let generate seed () =
   let open Printf in
   let open List in
+  let open Printing in
   Random.init seed;
   let random a b = a + Random.int (b - a + 1) in
   let w = random 10 160 in
   let h = random 10 600 in
   printf "%d %d\n" w h;
-  let nobjects = random 1 250 in
-  let rotatable = init nobjects (fun _ -> Random.bool ()) in
+  let objects = ref [] in
   let clist = ['~'; '!'; '@'; '#'; '$'; '%'; '^'; '&'; '*'; '('; ')'; '_'; '+' ] in
   let random_elem lst = nth lst (random 0 (length lst - 1)) in
+  let random_obj () = random_elem !objects in
+  let random_id () = "s" ^ (string_of_int (random 1 1000)) in
+  let random_name () = random_elem **> fst **> split name_constructor in
   let random_c () = random_elem clist in
   let random_pos () = random 2 10 in
   let random_int () = random (-100) 100 in
-  let print_random_stamp i name_lst =
-    printf "%s%s %c %d %d %d" (if i = 0 then "" else " ")
-            (random_elem name_lst) (random_c ()) (random_pos ())
-            (random_int ()) (random_int ())
-  in
-  flip_iteri rotatable (fun i -> function
-    | true -> print_random_stamp i [ "square"; "tile" ]
-    | false -> print_random_stamp i ["chess/"; "chess\\"; "xcross"; "+cross" ]);
-  let random_obj () = random 1 (min [10; nobjects]) in
-  print_endline "";
-  for i = 10 to random 10 1000 do
-    let id = random_obj () in
-    match random 1 6 with
-      | 1 -> printf "%d draw\n" id
-      | 2 -> printf "%d match %d\n" id (random_obj ())
-      | 3 -> printf "%d move %d %d\n" id (random_int ()) (random_int ())
-      | 4 -> printf "%d setc %c\n" id (random_c ())
-      | 5 -> printf "%d addn %d\n" id (random_pos ())
-      | 6 -> if nth rotatable (id - 1) then printf "%d rotate\n" id
+  let print_command = function
+      | 1 ->
+        let id = random_id () in
+        if not (mem id !objects) then begin
+          objects := id :: !objects;
+          printf "%s mkst %s %c %d %d %d\n" id (random_name ()) (random_c ())
+          (random_pos ()) (random_int ()) (random_int ())
+        end
+      | 2 -> printf "%s draw\n" (random_obj ())
+      | 3 -> printf "%s move %d %d\n" (random_obj ()) (random_int ()) (random_int ())
+      | 4 -> printf "%s setc %c\n" (random_obj ()) (random_c ())
+      | 5 -> printf "%s addn %d\n" (random_obj ()) (random_pos ())
+      | 6 -> printf "%s undo\n" (random_obj ())
+      | 7 -> printf "%s redo\n" (random_obj ())
       | _ -> failwith "impossible"
+  in
+  print_command 1;
+  for i = 1 to random 1 1000 do
+    print_command (random 1 7)
   done
 
 let () =
@@ -245,6 +247,5 @@ let () =
   Arg.parse
     [ ("-g", Arg.Int (fun seed -> f := generate seed), "Generate test case with the seed specified") ]
     (fun _ -> ())
-    "Solution for problem C-1.";
+    "Solution for problem C-3.";
   !f ()
-*)
