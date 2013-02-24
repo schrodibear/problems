@@ -22,6 +22,8 @@ module Printing : sig
 
   type position
 
+  type _int
+
   exception Invalid_operation of string
 
   class virtual ['a] stamp : char -> int -> int -> int -> object
@@ -32,6 +34,7 @@ module Printing : sig
     method virtual draw : point -> unit
     method virtual raw : 'a
     method get_position : position
+    method virtual check_dn : _int -> _int -> int -> bool
     method private line : point -> int -> int -> int -> int -> int -> unit
     method private rect : point -> int -> int -> int -> int -> unit
   end
@@ -54,6 +57,7 @@ module Printing : sig
   class canvas : int -> int -> object
     method draw : 'a. 'a stamp -> unit
     method contents : string
+    method check_dn : 'a .'a stamp -> int -> unit
     method private point : int -> int -> char -> unit
   end
 
@@ -66,6 +70,8 @@ end = struct
   let sign n = if n > 0 then 1 else if n < 0 then -1 else 0
 
   type point = int -> int -> char -> unit
+
+  type _int = int
 
   type position = { x: int; y : int }
 
@@ -87,7 +93,7 @@ end = struct
     method setc (c' : char) =
       c <- c'
     method addn dn =
-        n <- n + dn
+      n <- n + dn
     method move dx dy =
       x <- x + dx;
       y <- y + dy
@@ -107,6 +113,7 @@ end = struct
         done
       done
     method virtual draw : point -> unit
+    method virtual check_dn : int -> int -> int -> bool
     method virtual raw : 'a
   end
 
@@ -130,6 +137,8 @@ end = struct
       try matrix.(y).(x) <- c with Invalid_argument "index out of bounds" -> ()
     method draw : 'a. 'a stamp -> unit = fun obj ->
         obj#draw self#point
+    method check_dn : 'a . 'a stamp -> int -> unit = fun obj dn ->
+      if not (obj#check_dn w h dn) then raise (Invalid_operation "addn")
     method contents =
       let b = Buffer.create 100 in
       let p = Buffer.add_char b in
@@ -143,6 +152,9 @@ end = struct
     [ "square", (fun c n x y ->
                   (object (self)
                     inherit ['a] rotatable_stamp c n x y
+                    method check_dn w h dn =
+                      let n' = n + dn in
+                      2 <= n' && n' <= (min w (2 * h))
                     method draw point =
                       let w, h = if not rotated then n, n / 2 else n / 2, n in
                       self#line point w x y 1 0;
@@ -153,6 +165,9 @@ end = struct
       "tile", (fun c n x y ->
                 (object (self)
                   inherit ['a] rotatable_stamp c n x y
+                  method check_dn w h dn =
+                    let n' = n + dn in
+                    2 <= n' && n' <= (min w (2 * h))
                   method draw point =
                     let w, h = if not rotated then n, n / 2 else n / 2, n in
                       self#rect point w h x y
@@ -160,13 +175,19 @@ end = struct
     "chess\\", (fun c n x y ->
                  (object (self)
                    inherit ['a] stuck_stamp c n x y
-                   method draw point =
-                     self#rect point n ((n + 1) / 2) x y;
-                     self#rect point n ((n + 1) / 2) (x + n) (y + (n + 1) / 2)
+                    method check_dn w h dn =
+                      let n' = n + dn in
+                      1 <= n' && n' <= (min (w / 2) (h - 1))
+                    method draw point =
+                      self#rect point n ((n + 1) / 2) x y;
+                      self#rect point n ((n + 1) / 2) (x + n) (y + (n + 1) / 2)
                   end :> _ stamp));
     "chess/", (fun c n x y ->
                 (object (self)
                   inherit ['a] stuck_stamp c n x y
+                  method check_dn w h dn =
+                    let n' = n + dn in
+                    1 <= n' && n' <= (min (w / 2) (2 * (h / 2)))
                   method draw point =
                     self#rect point n ((n + 1) / 2) (x + n) y;
                     self#rect point n ((n + 1) / 2) x (y + (n + 1) / 2)
@@ -174,13 +195,19 @@ end = struct
     "xcross", (fun c n x y ->
                 (object (self)
                   inherit ['a] stuck_stamp c n x y
-                  method draw point =
-                    self#line point (2 * n + 1) x y 1 1;
-                    self#line point (2 * n + 1) x (y + 2 * n) 1 (-1)
+                  method check_dn w h dn =
+                    let n' = n + dn in
+                    0 <= n' && n' <= (min ((w - 1) / 2) ((h - 1) / 2))
+                   method draw point =
+                     self#line point (2 * n + 1) x y 1 1;
+                     self#line point (2 * n + 1) x (y + 2 * n) 1 (-1)
                 end :> _ stamp));
     "+cross", (fun c n x y ->
                 (object (self)
                   inherit ['a] stuck_stamp c n x y
+                  method check_dn w h dn =
+                    let n' = n + dn in
+                    0 <= n' && n' <= (min ((w - 1) / 4)  ((h - 1) / 2))
                   method draw point =
                     self#line point (4 * n + 1) x (y + n) 1 0;
                     self#line point (2 * n + 1) (x + 2 * n) y 0 1
@@ -218,7 +245,7 @@ let run () =
             | [ "match"; id ] -> obj#_match **> (get objects.(~%id - 1))
             | [ "move"; dx; dy ] -> obj#move ~%dx ~%dy
             | [ "setc"; c ] -> obj#setc c.[0]
-            | [ "addn"; dn ] -> obj#addn ~%dn
+            | [ "addn"; dn ] -> root_canvas#check_dn obj ~%dn; obj#addn ~%dn
             | [ "rotate" ] -> (match obj#raw with
               | `Rotatable_stamp obj -> obj#rotate ()
               | _ -> fail ())

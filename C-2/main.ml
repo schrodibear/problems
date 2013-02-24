@@ -17,11 +17,16 @@ module Printing : sig
 
   type point
 
+  type _int
+
+  exception Invalid_operation of string
+
   class virtual canvas : int -> int -> object
     method draw : stamp -> unit
     method subcanvas : int -> int -> int -> int -> subcanvas
     method private virtual point : int -> int -> char -> unit
     method private check_dimensions : dimensions -> bool
+    method check_dn : stamp -> int -> unit
   end
   and root_canvas : int -> int -> object
     inherit canvas
@@ -39,7 +44,7 @@ module Printing : sig
     method move : int -> int -> unit
     method _match : stamp -> unit
     method virtual draw : point -> unit
-    method private virtual check_n : int -> bool
+    method virtual check_dn : _int -> _int -> int -> bool
     method private line :
       (int -> int -> char -> 'a) ->
         int -> int -> int -> int -> int -> unit
@@ -62,6 +67,10 @@ end = struct
 
   type point = int -> int -> char -> unit
 
+  type _int = int
+
+  exception Invalid_operation of string
+
   class virtual canvas w h = object (self)
     method private check_dimensions d =
       d.x >=0 && d.y >= 0 && d.x + d.w <= w && d.y + d.h <= h
@@ -73,6 +82,8 @@ end = struct
       if not (self#check_dimensions { x; y; w; h }) then
           raise (Invalid_argument "subcanvas");
       new subcanvas self#point w h x y
+    method check_dn : stamp -> int -> unit = fun obj dn ->
+      if not (obj#check_dn w h dn) then raise (Invalid_operation "addn")
   end
   and root_canvas w h = object (self)
     inherit canvas w h
@@ -104,11 +115,10 @@ end = struct
 
     method setc (c' : char) =
       c <- c'
-    method private virtual check_n : int -> bool
+    method virtual check_dn : int -> int -> int -> bool
     method virtual get_dimensions : dimensions
     method addn dn =
-      if self#check_n (n + dn) then
-        n <- n + dn
+      n <- n + dn
     method move dx dy =
       x <- x + dx;
       y <- y + dy
@@ -127,14 +137,16 @@ end = struct
         done
       done
     method virtual draw : (int -> int -> char -> unit) -> unit
+    method private virtual check_dn : int -> int -> int -> bool
   end
 
   let name_constructor =
     [ "square", (fun c n x y ->
                   (object (self)
                     inherit stamp c n x y
-                    method check_n n' =
-                      2 <= n'
+                    method check_dn w h dn =
+                      let n' = n + dn in
+                      2 <= n' && n' <= (min w (2 * h))
                     method get_dimensions =
                       { x; y; w = n; h = n / 2 }
                     method draw point =
@@ -146,6 +158,9 @@ end = struct
       "tile", (fun c n x y ->
                 (object (self)
                   inherit stamp c n x y
+                  method check_dn w h dn =
+                    let n' = n + dn in
+                    2 <= n' && n' <= (min w (2 * h))
                   method check_n n' =
                     2 <= n'
                   method get_dimensions =
@@ -156,8 +171,9 @@ end = struct
     "chess\\", (fun c n x y ->
                  (object (self)
                    inherit stamp c n x y
-                   method check_n n' =
-                     1 <= n'
+                   method check_dn w h dn =
+                     let n' = n + dn in
+                     1 <= n' && n' <= (min (w / 2) (h - 1))
                    method get_dimensions =
                      { x; y; w = 2 * n; h = 2 * ((n + 1) / 2) }
                    method draw point =
@@ -167,8 +183,9 @@ end = struct
     "chess/", (fun c n x y ->
                 (object (self)
                   inherit stamp c n x y
-                  method check_n n' =
-                    1 <= n'
+                  method check_dn w h dn =
+                    let n' = n + dn in
+                    1 <= n' && n' <= (min (w / 2) (2 * (h / 2)))
                   method get_dimensions =
                     { x; y; w = 2 * n; h = 2 * ((n + 1) / 2) }
                   method draw point =
@@ -178,8 +195,9 @@ end = struct
     "xcross", (fun c n x y ->
                 (object (self)
                   inherit stamp c n x y
-                  method check_n n' =
-                    0 <= n'
+                  method check_dn w h dn =
+                    let n' = n + dn in
+                    0 <= n' && n' <= (min ((w - 1) / 2) ((h - 1) / 2))
                   method get_dimensions =
                     { x; y; w = 2 * n + 1; h = 2 * n + 1 }
                   method draw point =
@@ -189,8 +207,9 @@ end = struct
     "+cross", (fun c n x y ->
                 (object (self)
                   inherit stamp c n x y
-                  method check_n n' =
-                    0 <= n'
+                  method check_dn w h dn =
+                    let n' = n + dn in
+                    0 <= n' && n' <= (min ((w - 1) / 4)  ((h - 1) / 2))
                   method get_dimensions =
                     { x; y; w = 4 * n + 1; h = 2 * n + 1 }
                   method draw point =
@@ -241,7 +260,7 @@ let run () =
                  | [ "match"; id ] -> (obj ())#_match **> (get objects.(~%id) :> stamp)
                  | [ "move"; dx; dy ] -> (obj ())#move ~%dx ~%dy
                  | [ "setc"; c ] -> (obj ())#setc c.[0]
-                 | [ "addn"; dn ] -> (obj ())#addn ~%dn
+                 | [ "addn"; dn ] -> root_canvas#check_dn (obj ()) ~%dn; (obj ())#addn ~%dn
                  | _ -> fail ())
              | _ -> fail ());
          with

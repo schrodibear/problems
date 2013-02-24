@@ -7,18 +7,24 @@ module Printing : sig
 
   type kind
 
+  type _int
+
+  exception Invalid_operation of string
+
   class virtual stamp : kind -> char -> int -> int -> int -> object
     method setc : char -> unit
     method addn : int -> unit
     method move : int -> int -> unit
     method virtual print : point -> unit
     method virtual kind : kind
+    method virtual check_dn : _int -> _int -> int -> bool
   end
 
   class canvas : int -> int -> object
     method draw : stamp -> unit
     method undo : stamp -> unit
     method redo : stamp -> unit
+    method check_dn : stamp -> int -> unit
     method contents : string
   end
 
@@ -34,6 +40,8 @@ end = struct
 
   type kind = string
 
+  type _int = int
+
   type action = { mutable undone : bool;
                   print : print;
                   kind : kind }
@@ -41,6 +49,8 @@ end = struct
   type log = action dq
 
   type position = { x: int; y : int }
+
+  exception Invalid_operation of string
 
   class virtual stamp (name : kind) c n x y = object
 
@@ -58,6 +68,7 @@ end = struct
       y <- y + dy
     method kind = name
     method virtual print : point -> unit
+    method virtual check_dn : int -> int -> int -> bool
   end
 
   class canvas w h = object
@@ -75,6 +86,8 @@ end = struct
       match !log |> find ~backwards:true (fun { undone; kind } -> undone && kind = obj#kind) with
         | Some (_, act) -> act.undone <- false
         | None -> ()
+    method check_dn : stamp -> int -> unit = fun obj dn ->
+      if not (obj#check_dn w h dn) then raise (Invalid_operation "addn")
     method contents =
       let matrix = Array.make_matrix h w '.' in
       let point x y c =
@@ -108,8 +121,11 @@ end = struct
     let pair (x, f) = (x, f x) in
     [ pair ("square",
              (fun name c n x y ->
-               object (self)
+               object
                  inherit stamp name c n x y
+                 method check_dn w h dn =
+                   let n' = n + dn in
+                   2 <= n' && n' <= (min w (2 * h))
                  method print =
                    let c, n, x, y = c, n, x, y in
                    (fun point ->
@@ -120,53 +136,68 @@ end = struct
                end));
       pair ("tile",
             (fun name c n x y ->
-               object (self)
+               object
                  inherit stamp name c n x y
+                 method check_dn w h dn =
+                   let n' = n + dn in
+                   2 <= n' && n' <= (min w (2 * h))
                  method print =
                    let c, n, x, y= c, n, x, y in
                    (fun point ->
                      rect point c n (n / 2) x y)
-                 end));
+               end));
     pair ("chess\\",
           (fun name c n x y ->
-             object (self)
+             object
                inherit stamp name c n x y
+               method check_dn w h dn =
+                   let n' = n + dn in
+                   1 <= n' && n' <= (min (w / 2) (h - 1))
                method print =
                  let c, n, x, y = c, n, x, y in
                  (fun point ->
                    rect point c n ((n + 1) / 2) x y;
                    rect point c n ((n + 1) / 2) (x + n) (y + (n + 1) / 2))
-              end));
+             end));
     pair ("chess/",
           (fun name c n x y ->
-             object (self)
+             object
                inherit stamp name c n x y
+               method check_dn w h dn =
+                   let n' = n + dn in
+                   1 <= n' && n' <= (min (w / 2) (2 * (h / 2)))
                method print =
                  let c, n, x, y = c, n, x, y in
                  (fun point ->
                    rect point c n ((n + 1) / 2) (x + n) y;
                    rect point c n ((n + 1) / 2) x (y + (n + 1) / 2))
-               end));
+             end));
     pair ("xcross",
           (fun name c n x y ->
-             object (self)
+             object
                inherit stamp name c n x y
+               method check_dn w h dn =
+                   let n' = n + dn in
+                   0 <= n' && n' <= (min ((w - 1) / 2) ((h - 1) / 2))
                method print =
                  let c, n, x, y = c, n, x, y in
                  (fun point ->
                    line point c (2 * n + 1) x y 1 1;
                    line point c (2 * n + 1) x (y + 2 * n) 1 (-1))
-               end));
+             end));
     pair ("+cross",
            (fun name c n x y ->
-              object (self)
+              object
                 inherit stamp name c n x y
+                method check_dn w h dn =
+                   let n' = n + dn in
+                   0 <= n' && n' <= (min ((w - 1) / 4)  ((h - 1) / 2))
                 method print =
                   let c, n, x, y = c, n, x, y in
                   (fun point ->
                     line point c (4 * n + 1) x (y + n) 1 0;
                     line point c (2 * n + 1) (x + 2 * n) y 0 1)
-                end))
+              end))
     ]
 end
 
@@ -194,7 +225,7 @@ let run () =
             | [ "draw" ] -> root_canvas#draw (get_obj id)
             | [ "move"; dx; dy ] -> (get_obj id)#move ~%dx ~%dy
             | [ "setc"; c ] -> (get_obj id)#setc c.[0]
-            | [ "addn"; dn ] -> (get_obj id)#addn ~%dn
+            | [ "addn"; dn ] -> root_canvas#check_dn (get_obj id) ~%dn; (get_obj id)#addn ~%dn
             | [ "undo" ] -> root_canvas#undo (get_obj id)
             | [ "redo" ] -> root_canvas#redo (get_obj id)
             | _ -> fail())
