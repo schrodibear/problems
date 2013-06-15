@@ -9,12 +9,13 @@ solution
 *.cpp
 \#*\#
 .*
-**/_build
+_build
 *.d.byte
 *.byte
 *.native
 *.opt
 _tags
+*.hi
 
 # Tests and correct answers
 *.dat
