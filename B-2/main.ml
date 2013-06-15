@@ -1,27 +1,23 @@
 
-open Batteries_uni
+open Batteries
 
-module String = struct
-  include String
-
-  let flip_iteri s f = iteri f s
-end
+let (&&&) f1 f2 a = f1 a, f2 a
 
 let bitset_of_string s =
   let result = BitSet.create (String.length s) in
-  String.flip_iteri s (fun i c -> if c = '1' then BitSet.set result i);
+  s |> String.iteri (fun i c -> if c = '1' then BitSet.set result i);
   result
 
 let string_of_bitset l bs =
   let result = String.create l in
-  String.flip_iteri result (fun i _ ->
-    result.[i] <- if BitSet.is_set bs i then '1' else '0');
+  result |> String.iteri (fun i _ ->
+    result.[i] <- if BitSet.mem bs i then '1' else '0');
   result
 
 let make_name_function l bs =
   let result = Hashtbl.create 8 in
   let toggle = BitSet.toggle bs
-  and get = BitSet.is_set bs
+  and get = BitSet.mem bs
   and put = BitSet.put bs
   and unset = BitSet.unset bs
   in
