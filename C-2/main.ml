@@ -249,7 +249,8 @@ let run () =
                  ((get canvases.(if parent <> "-1" then ~%parent else !curr_canvas))#
                   subcanvas ~%w ~%h ~%x ~%y :> canvas)
              | [ "new"; id; name; c; n; x; y ] ->
-               set_if_none objects ~%id (flip_assoc name_constructor name c.[0] ~%n ~%x ~%y)
+               set_if_none objects ~%id (flip_assoc name_constructor name c.[0] ~%n ~%x ~%y);
+               root_canvas#check_dn (get objects.(~%id)) 0
              | [ "switch"; id ] ->
                if canvases.(~%id) <> None then
                  curr_canvas := ~%id
