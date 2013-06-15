@@ -233,7 +233,8 @@ let run () =
     roll_by 5 |>
     iteri (fun i -> function
       | [ name; c; n; x; y ] -> (try
-        objects.(i) <- Some (flip_assoc name_constructor name c.[0] ~%n ~%x ~%y)
+        objects.(i) <- Some (flip_assoc name_constructor name c.[0] ~%n ~%x ~%y)(*;
+        root_canvas#check_dn (get objects.(i)) 0*)
         with Invalid_operation "new" -> ())
       | _ -> failwith "impossible");
     try while true do
@@ -272,7 +273,7 @@ let generate seed () =
   let random_int () = random (-100) 100 in
   let print_random_stamp i name_lst =
     printf "%s%s %c %d %d %d" (if i = 0 then "" else " ")
-            (random_elem name_lst) (random_c ()) (random_pos ())
+            (random_elem name_lst) (random_c ()) (random 2 (min ((w - 1) / 4) ((h - 1) / 4)))
             (random_int ()) (random_int ())
   in
   flip_iteri rotatable (fun i -> function
